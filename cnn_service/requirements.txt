@@ -5,4 +5,4 @@ torch==2.5.1
 torchvision==0.20.1
 opencv-python-headless==4.10.0.84
 pytesseract==0.3.13
-numpy<2.2
+numpy<2.6
