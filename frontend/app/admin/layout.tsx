@@ -7,6 +7,7 @@ import dataProviderRest from "@refinedev/simple-rest";
 import { QueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import Shell from "@/components/Shell";
+import { usePresence } from "@/lib/presence";
 import { demoDataProvider, RESOURCES } from "@/lib/demoData";
 import { accessControlProvider, authProvider, Role, useRole } from "@/lib/providers";
 
@@ -28,6 +29,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { role, setRole } = useRole();
   const [qc] = useState(() => new QueryClient());
   const [user, setUser] = useState<string | null>(null);
+  const live = usePresence();
 
   useEffect(() => {
     let u: string | null = null;
@@ -63,7 +65,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {link("/admin", "Overview")}
               {Object.entries(RESOURCES).map(([name, r]) => link(`/admin/${name}`, r.label))}
               {TOOLS.map(([href, label]) => link(href, label))}
-              <label className="admin__link" style={{ marginTop: "auto" }}>
+              <div className="admin__link" style={{ marginTop: "auto" }} title="Open tabs of this app in this browser, synced live">
+                <span className="live-dot" /> {live} {live === 1 ? "tab" : "tabs"} live
+              </div>
+              <label className="admin__link">
                 Role (RBAC demo)
                 <select value={role} onChange={(e) => setRole(e.target.value as Role)} className="input" style={{ marginTop: 8, background: "#000" }}>
                   <option>admin</option><option>editor</option><option>viewer</option>

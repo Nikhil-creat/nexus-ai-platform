@@ -54,7 +54,8 @@ Deploy the `frontend/` folder to Vercel (see [Deploy](#deploy-frontend-on-vercel
 | **Audit trail** | Append-only log where each entry stores the SHA-256 of the previous one. Editing history breaks the chain at that entry. Database triggers block UPDATE and DELETE. |
 | **FinOps** | Token, cost and cache-hit tracking per user, with semantic caching to avoid repeat spend. |
 | **Workflows** | Condition-and-action rules evaluated against live data. |
-| **Platform polish** | Command palette, theme studio, offline PWA cache, security headers, `robots.txt`, sitemap, 404 page, CSV and JSON export. |
+| **Dashboard** | KPI tiles and bar charts (orders by status, users by role, token usage, order value), plus live tab presence. |
+| **Platform polish** | Command palette, theme studio, installable PWA with offline cache, social preview image, security headers, `robots.txt`, sitemap, 404 page, CSV and JSON export. |
 
 ### Demo mode versus full stack
 
@@ -152,6 +153,10 @@ curl -s localhost/api/schema/inspect -H "authorization: Bearer $TOKEN" \
 ### Run the tests
 
 ```bash
+# frontend logic (Node 22): schema inspector and hybrid search
+cd frontend && npm test
+
+# backend: audit chain, PII masking, SQL and prompt guards, RBAC
 pip install fastapi pyjwt pyyaml pytest
 cd backend && python -m pytest -q tests
 ```
@@ -236,10 +241,11 @@ Vercel hosts the frontend only. Run the Python services on Render, Railway, Fly.
 
 - [x] Schema auto-detection, Refine admin, RBAC
 - [x] Hybrid RAG, audit chain, workflows, copilot with approval gate
-- [x] Docker stack, CI, tests
+- [x] Docker stack, CI, unit tests (Node and pytest)
+- [x] Dashboard charts and same-browser tab presence
 - [ ] Persist audit, approvals and cache in Postgres and Redis
 - [ ] OIDC sign-in (Google, GitHub) and WebAuthn passkeys
-- [ ] Real-time presence and optimistic locking over WebSockets
+- [ ] Per-record presence and optimistic locking over WebSockets (tab presence already works in the browser)
 - [ ] Trained CNN weights and an evaluation report
 - [ ] Postgres and MySQL live introspection for schema detection
 - [ ] Visual workflow canvas and signed webhooks

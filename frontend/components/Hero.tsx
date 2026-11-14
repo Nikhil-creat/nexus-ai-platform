@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { MEDIA, NAV } from "@/lib/site";
 
@@ -7,9 +7,11 @@ export default function Hero({ onOpenCopilot }: { onOpenCopilot?: () => void }) 
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState("");
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
   useEffect(() => {
+    menuRef.current?.toggleAttribute("inert", !open);
     document.body.classList.toggle("menu-open", open);
     return () => document.body.classList.remove("menu-open");
   }, [open]);
@@ -27,7 +29,7 @@ export default function Hero({ onOpenCopilot }: { onOpenCopilot?: () => void }) 
   const join = () => { setOpen(false); document.getElementById("email")?.focus(); };
 
   return (
-    <header className="hero" style={{ ["--poster" as string]: `url(${MEDIA.poster})` }}>
+    <header className="hero" style={{ "--poster": `url(${MEDIA.poster})` } as CSSProperties}>
       <div className="hero__media">
         <video autoPlay muted loop playsInline preload="auto" poster={MEDIA.poster}>
           <source src={MEDIA.video} type="video/mp4" />
@@ -62,15 +64,15 @@ export default function Hero({ onOpenCopilot }: { onOpenCopilot?: () => void }) 
         aria-modal="true"
         aria-label="Site menu"
         aria-hidden={!open}
-        {...(open ? {} : ({ inert: true } as Record<string, unknown>))}
+        ref={menuRef}
         onClick={(e) => { if (e.target === e.currentTarget) setOpen(false); }}
       >
         {NAV.map((n, i) => (
-          <a key={n.href} className="menu__link menu__item" style={{ ["--i" as string]: i }} href={n.href} onClick={() => setOpen(false)}>
+          <a key={n.href} className="menu__link menu__item" style={{ "--i": i } as CSSProperties} href={n.href} onClick={() => setOpen(false)}>
             {n.label}
           </a>
         ))}
-        <button className="menu__cta menu__item" style={{ ["--i" as string]: 4 }} onClick={join}>Join up</button>
+        <button className="menu__cta menu__item" style={{ "--i": 4 } as CSSProperties} onClick={join}>Join up</button>
       </div>
 
       <div className="hero__body" id="top">
