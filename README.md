@@ -1,112 +1,260 @@
-# Refine-Nexus AI
+<div align="center">
 
-Autonomous admin-panel generator and intelligent operations OS. Ingest an OpenAPI spec, JSON or CSV and get typed Refine resources, a human-gated agentic copilot, hybrid RAG, CNN document intelligence, FinOps telemetry and a tamper-evident audit trail.
+# NEXUS · Refine-Nexus AI
 
-```
-frontend/      Next.js 15 + React 19 + Refine (ECHOID-style UI, Copilot drawer, Cmd+K, admin demo)
-backend/       FastAPI: schema_inspector, security, audit chain, hybrid RAG, SSE copilot, Celery worker
-ai_workers/    LangGraph supervisor: architect -> codegen -> sandboxed tsc -> HITL gate -> executor
-cnn_service/   PyTorch + OpenCV document classifier / field extractor / 1D-CNN anomaly detector
-infra/         nginx.conf, init.sql (pgvector, pg_trgm, RLS, append-only audit)
-```
+**Autonomous admin-panel generator and intelligent operations OS.**
+Feed it an API spec, a JSON sample or a CSV. Get a typed, secure admin panel with an agentic copilot that asks before it acts.
+
+[![CI](https://github.com/Nikhil-creat/nexus-ai-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/Nikhil-creat/nexus-ai-platform/actions/workflows/ci.yml)
+![License](https://img.shields.io/badge/license-MIT-white)
+![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=nextdotjs)
+![React](https://img.shields.io/badge/React-19-149eca?logo=react&logoColor=white)
+![Refine](https://img.shields.io/badge/Refine-4-3ecf8e)
+![FastAPI](https://img.shields.io/badge/FastAPI-async-009688?logo=fastapi&logoColor=white)
+![LangGraph](https://img.shields.io/badge/LangGraph-agents-1c3c3c)
+![PyTorch](https://img.shields.io/badge/PyTorch-CNN-ee4c2c?logo=pytorch&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-compose-2496ed?logo=docker&logoColor=white)
+
+[Live demo](#live-demo) · [Features](#features) · [Architecture](#architecture) · [Quick start](#quick-start) · [Security](#security-model) · [Roadmap](#roadmap)
+
+</div>
+
+---
+
+## Why this exists
+
+Every internal tool starts the same way: someone hand-builds tables, forms, permissions and audit logs on top of an API. NEXUS automates that. It infers schemas and relations, scaffolds a Refine admin, and layers on the parts teams usually bolt on later: role-based access, human approval for risky actions, hybrid retrieval over your own documents, document vision, cost tracking and a tamper-evident audit trail.
+
+## Live demo
+
+Deploy the `frontend/` folder to Vercel (see [Deploy](#deploy-frontend-on-vercel)) and open it. No backend is needed for the demo.
+
+| Step | Where | What to try |
+|---|---|---|
+| 1 | Landing page | The hero video, responsive menu, `Cmd/Ctrl+K` palette |
+| 2 | `/login` | Any valid email, password `nexus-demo` |
+| 3 | Overview | KPIs read through a Refine data provider |
+| 4 | Users / Orders | Sort, filter, CSV export, delete. Switch role in the sidebar and watch actions lock |
+| 5 | Schema Studio | Click **Load sample**, then **Analyze** |
+| 6 | Knowledge | Ask "who can delete records?" or "refund over 10000" |
+| 7 | Audit trail | Append entries, then press **Tamper (test)** and watch the chain break |
+| 8 | Workflows | Run the default rules against live orders |
+| 9 | Copilot (bottom right) | Type "delete all inactive users" and see the approval gate |
 
 ## Features
 
-| Area | What works today |
+| Area | What it does |
 |---|---|
-| Landing + auth | ECHOID-style hero, responsive menu, login page, protected `/admin` |
-| Admin (Refine) | Users, Orders, LLM FinOps with sort, filter, delete, CSV export; role-based UI (admin / editor / viewer) |
-| Schema Studio | Paste OpenAPI JSON, JSON or CSV in the browser, get field widgets, relations, Zod and Refine JSON downloads |
-| Knowledge (RAG) | BM25 + vector similarity fused with RRF, add or upload your own docs (stored in your browser) |
-| Audit trail | SHA-256 hash chain with live verify, tamper test and export |
-| Workflows | Rule builder (condition -> action) evaluated against live Orders |
-| Copilot | Streaming drawer, context-aware, PII masking, human approval for destructive actions, voice input |
-| Platform | Cmd/Ctrl+K palette, theme studio, PWA offline cache, robots + sitemap, 404 page, security headers |
-| Backend (Docker) | FastAPI, LangGraph supervisor with sandboxed self-healing, pgvector hybrid RAG, CNN document service, Celery, Postgres RLS, MinIO, nginx |
-| Quality | Pytest suite, GitHub Actions CI (typecheck, build, tests, compose validation), MIT licence |
+| **Schema auto-detection** | Parses OpenAPI 3.x, JSON and CSV. Detects keys, relations, enums, nullable fields and semantic widgets (`avatar_url` is an image, `status` is a badge, `created_at` is a datetime). Emits Refine resources and Zod schemas. |
+| **Multi-agent engine** | LangGraph supervisor with architect and codegen agents, a Docker sandbox that runs `tsc` and retries up to three times, then a human approval gate before anything destructive. |
+| **Hybrid RAG** | Dense vectors (pgvector) plus keyword search (full-text and trigram), fused with Reciprocal Rank Fusion and reranked by a cross-encoder. The browser demo uses BM25 plus hashed vectors with the same fusion. |
+| **CNN vision** | PyTorch classifier for invoices, IDs and shipping labels, OpenCV preprocessing, OCR field extraction, and a 1D convolution spike detector for metrics. |
+| **Nexus Copilot** | Context-aware drawer (route, record, role), streaming answers over SSE, voice input, PII masking, prompt-injection screening. DELETE, UPDATE, migrations and webhooks always wait for approval. |
+| **Access control** | Role matrix (admin, editor, viewer) enforced in FastAPI and in Refine's `accessControlProvider`. Attribute rules for tenant and owner. |
+| **Audit trail** | Append-only log where each entry stores the SHA-256 of the previous one. Editing history breaks the chain at that entry. Database triggers block UPDATE and DELETE. |
+| **FinOps** | Token, cost and cache-hit tracking per user, with semantic caching to avoid repeat spend. |
+| **Workflows** | Condition-and-action rules evaluated against live data. |
+| **Platform polish** | Command palette, theme studio, offline PWA cache, security headers, `robots.txt`, sitemap, 404 page, CSV and JSON export. |
 
-## 1. Run the frontend only (fastest)
+### Demo mode versus full stack
+
+| Capability | Vercel demo (no backend) | Docker full stack |
+|---|---|---|
+| Admin tables, RBAC, CSV export | In-memory sample data | Your REST API through `NEXT_PUBLIC_REST_URL` |
+| Schema Studio | JSON and CSV and OpenAPI JSON in the browser | Also YAML through `/schema/inspect` |
+| Knowledge search | In-browser BM25 plus vectors | pgvector plus cross-encoder reranker |
+| Audit trail | Hash chain in browser storage | Postgres `audit_log` with immutability triggers |
+| Copilot | Local replies and approval gate | Streaming LLM through LiteLLM |
+| Document intelligence | Not available | CNN service |
+
+## Architecture
+
+```mermaid
+flowchart LR
+  U[Browser<br/>Next.js + Refine] -->|HTTPS| N[nginx<br/>rate limit + headers]
+  N --> F[Frontend :3000]
+  N -->|/api| B[FastAPI :8000]
+  B --> P[(PostgreSQL 16<br/>pgvector + RLS)]
+  B --> R[(Redis<br/>cache + limits)]
+  B --> M[(MinIO<br/>files)]
+  B --> C[CNN service<br/>PyTorch + OpenCV]
+  B --> Q[Celery worker]
+  Q --> G[LangGraph supervisor]
+  G --> S[Docker sandbox<br/>tsc, no network]
+  G -->|destructive step| H{Human approval}
+  B --> L[LiteLLM gateway<br/>OpenAI / Anthropic / Ollama]
+```
+
+```mermaid
+flowchart LR
+  A[Request] --> SUP[Supervisor]
+  SUP -->|build| ARC[Architect] --> COD[Codegen] --> QA[Sandbox tsc]
+  QA -->|errors, under 3 tries| COD
+  QA -->|clean| GATE{Destructive?}
+  GATE -->|yes| HUM[Human approves or rejects]
+  GATE -->|no| EXE[Executor]
+  HUM -->|approved| EXE
+  HUM -->|rejected| END[Stop]
+```
+
+### Repository layout
+
+```
+frontend/      Next.js 15, React 19, Refine, all pages and components
+backend/       FastAPI app, security, audit, RAG, worker, tests
+ai_workers/    LangGraph supervisor graph
+cnn_service/   PyTorch document classifier and anomaly detector
+infra/         nginx.conf and init.sql (extensions, RLS, immutable audit)
+.github/       CI workflow, issue and PR templates, Dependabot
+```
+
+## Tech stack
+
+| Layer | Tools |
+|---|---|
+| Frontend | Next.js 15 (App Router), React 19, Refine, TanStack Query, Zustand, Zod, TypeScript |
+| Backend | Python 3.12, FastAPI, Celery, SQLAlchemy, PyJWT |
+| AI | LangGraph, LiteLLM, sentence-transformers, cross-encoder reranking |
+| Vision | PyTorch, OpenCV, Tesseract |
+| Data | PostgreSQL 16 with pgvector and pg_trgm, Redis, MinIO |
+| Infra | Docker, Docker Compose, nginx, GitHub Actions |
+
+## Quick start
+
+### Frontend only
 
 ```bash
 cd frontend
 npm install
-npm run dev          # http://localhost:3000
+npm run dev        # http://localhost:3000
 ```
-Without a backend URL the Copilot and admin run in demo mode (in-memory data, local approval gate).
 
-## 2. Run the full stack (Docker)
+### Full stack with Docker
 
 ```bash
 cp .env.example .env
-# edit .env: set POSTGRES_PASSWORD, JWT_SECRET (openssl rand -hex 32), MINIO_ROOT_PASSWORD, DEMO_ADMIN_PASSWORD
+# edit .env: POSTGRES_PASSWORD, JWT_SECRET (openssl rand -hex 32), MINIO_ROOT_PASSWORD, DEMO_ADMIN_PASSWORD
 docker compose up --build -d
 docker compose ps
 ```
-- App: http://localhost  · API docs: http://localhost/api/docs · MinIO console: http://127.0.0.1:9001
-- Database schema and extensions are created by `infra/init.sql` on first start.
 
-Try the schema inspector:
+App at http://localhost, API docs at http://localhost/api/docs, MinIO console at http://127.0.0.1:9001.
+
+Try the schema API:
+
 ```bash
 TOKEN=$(curl -s localhost/api/auth/login -H 'content-type: application/json' \
   -d '{"email":"admin@nexus.dev","password":"<DEMO_ADMIN_PASSWORD>"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
 curl -s localhost/api/schema/inspect -H "authorization: Bearer $TOKEN" \
-  -d '{"id":1,"email":"a@b.com","status":"active","avatar_url":"https://x/y.png","created_at":"2026-01-01T00:00:00Z"}'
+  -d '{"id":1,"email":"a@b.com","status":"active","avatar_url":"https://x/y.png"}'
 ```
 
-## 3. Push to GitHub from your phone (Termux)
+### Run the tests
 
-Install Termux from **F-Droid** (the Play Store build is outdated). Save `refine-nexus-ai.zip` to your phone's Downloads, then:
+```bash
+pip install fastapi pyjwt pyyaml pytest
+cd backend && python -m pytest -q tests
+```
+
+## Configuration
+
+| Variable | Where | Purpose |
+|---|---|---|
+| `POSTGRES_PASSWORD` | `.env` | Database password |
+| `JWT_SECRET` | `.env` | Token signing key, at least 16 characters |
+| `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | `.env` | Object storage credentials |
+| `DEMO_ADMIN_PASSWORD` | `.env` | Password for the demo login endpoint |
+| `LITELLM_MODEL` | `.env` | Default model, for example `gpt-4o-mini` |
+| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | `.env` | Optional. Leave blank for offline demo replies |
+| `ALLOWED_ORIGINS` | `.env` | CORS origins, set to your frontend URL |
+| `NEXT_PUBLIC_API_URL` | frontend | Deployed FastAPI base URL. Empty means demo mode |
+| `NEXT_PUBLIC_REST_URL` | frontend | Point Refine at a real REST API |
+| `NEXT_PUBLIC_SITE_URL` | frontend | Public URL, used by the sitemap |
+
+## API reference
+
+| Method | Path | Role | Purpose |
+|---|---|---|---|
+| GET | `/health` | public | Liveness and Redis status |
+| POST | `/auth/login` | public | Issue a JWT |
+| POST | `/schema/inspect` | admin, editor | Infer resources from a spec or sample |
+| POST | `/copilot/stream` | any | Streaming copilot over SSE |
+| POST | `/copilot/approve/{id}` | admin | Approve or reject a pending action |
+| POST | `/documents/extract` | admin, editor | Classify a document image and extract fields |
+| GET | `/finops/summary` | any | Token and cost telemetry |
+| GET | `/audit` | any | Recent entries plus chain verification |
+
+## Security model
+
+- **Authentication and authorization:** JWT, role matrix, tenant and owner attribute checks. The server is the source of truth; the UI only mirrors it.
+- **Human in the loop:** delete, update, migrate, webhook and bulk update need explicit approval, recorded in the audit chain.
+- **Data protection:** emails, phone numbers, card numbers and Aadhaar-style IDs are masked before text reaches an external model.
+- **Prompt safety:** injection heuristics reject known override patterns. The analyst SQL guard allows a single read-only SELECT.
+- **Isolation:** generated code runs with no network, a read-only filesystem and capped CPU, memory and processes. Postgres row-level security isolates tenants.
+- **Containers:** non-root users, dropped capabilities, `no-new-privileges`, nginx rate limiting and security headers.
+- **Tamper evidence:** hash-chained audit entries and database triggers that refuse updates and deletes.
+
+Report vulnerabilities as described in [SECURITY.md](SECURITY.md).
+
+## Known limitations
+
+Be honest about what this is: a strong portfolio-grade foundation, not a finished SaaS.
+
+- The demo login and sample data are for evaluation only. Connect a real identity provider (OIDC) and store tokens in httpOnly cookies before real use.
+- The backend audit chain, pending approvals and semantic cache are in memory. Persist them to Postgres and Redis for production.
+- The CNN ships without trained weights. Responses are flagged `model_trained: false` and routed to human review.
+- LLM features need an API key or a local Ollama model. Without one the copilot answers in offline demo mode.
+- Uploads are limited to PNG and JPEG up to 10 MB. Prompts are limited to 4,000 characters.
+
+## Push to GitHub from your phone (Termux)
 
 ```bash
 pkg update -y && pkg upgrade -y
 pkg install -y git gh unzip
-termux-setup-storage                 # tap Allow on the permission prompt
-cd ~
-unzip ~/storage/downloads/refine-nexus-ai.zip
-cd refine-nexus-ai
-
-git config --global user.name  "Nikhil Chary Sriramoju"
-git config --global user.email "sriramojunikhil66@gmail.com"   # use the email verified on GitHub
-
-gh auth login        # GitHub.com -> HTTPS -> Yes (auth git) -> Login with a web browser
-                     # copy the one-time code, open the link, paste it, approve
-gh auth setup-git
-
-git init -b main
-git add .
-git status           # make sure .env is NOT listed
-git commit -m "Initial commit: Refine-Nexus AI"
-gh repo create refine-nexus-ai --public --source=. --remote=origin --push
+termux-setup-storage
+cd ~ && unzip ~/storage/downloads/refine-nexus-ai.zip && cd refine-nexus-ai
+git config --global user.name  "Your Name"
+git config --global user.email "you@example.com"
+gh auth login && gh auth setup-git
+git init -b main && git add . && git status
+git commit -m "Initial commit"
+gh repo create nexus-ai-platform --public --source=. --remote=origin --push
 ```
-Done: your repo is at `https://github.com/Nikhil-creat/refine-nexus-ai`.
 
-Later changes:
-```bash
-git add . && git commit -m "describe the change" && git push
-```
-If the push asks for a password, run `gh auth setup-git` again (GitHub no longer accepts account passwords).
+Later changes: `git add . && git commit -m "message" && git push`.
 
-Skip `npm run dev` on the phone: Next.js native builds are unreliable on Android. Let Vercel build it.
+## Deploy frontend on Vercel
 
-## 4. Deploy the frontend on Vercel
+1. Open vercel.com, sign in with GitHub, then **Add New → Project** and import this repo.
+2. Set **Root Directory** to `frontend`.
+3. Leave environment variables empty for the demo, then press **Deploy**.
+4. Every push to `main` redeploys.
 
-Easiest on mobile (browser, no CLI): open vercel.com in Chrome, enable **Desktop site** from the menu, then:
+Vercel hosts the frontend only. Run the Python services on Render, Railway, Fly.io or a VPS with `docker compose`, then set `NEXT_PUBLIC_API_URL` in Vercel and `ALLOWED_ORIGINS` on the backend.
 
-1. **Continue with GitHub**, approve access to `refine-nexus-ai`.
-2. **Add New -> Project**, pick the repo, **Import**.
-3. **Root Directory -> Edit -> `frontend`** (important: monorepo). Framework: Next.js (auto).
-4. Leave environment variables empty for the demo, **Deploy**. After ~1-2 minutes you get `https://refine-nexus-ai-xxxx.vercel.app`.
-5. Every `git push` to `main` redeploys automatically.
+## Roadmap
 
-Optional CLI from Termux: `pkg install nodejs && npm i -g vercel`, then `cd frontend && vercel login && vercel --prod` (answer the prompts with defaults).
+- [x] Schema auto-detection, Refine admin, RBAC
+- [x] Hybrid RAG, audit chain, workflows, copilot with approval gate
+- [x] Docker stack, CI, tests
+- [ ] Persist audit, approvals and cache in Postgres and Redis
+- [ ] OIDC sign-in (Google, GitHub) and WebAuthn passkeys
+- [ ] Real-time presence and optimistic locking over WebSockets
+- [ ] Trained CNN weights and an evaluation report
+- [ ] Postgres and MySQL live introspection for schema detection
+- [ ] Visual workflow canvas and signed webhooks
+- [ ] OpenTelemetry, Prometheus and Grafana dashboards
+- [ ] Playwright end-to-end tests
 
-Optional environment variables: `NEXT_PUBLIC_API_URL` (deployed FastAPI URL), `NEXT_PUBLIC_REST_URL`, `NEXT_PUBLIC_SITE_URL` (your Vercel URL, for sitemap).
+## Contributing
 
-Vercel hosts only the frontend. Python services need a container host (Render, Railway, Fly.io or a VPS with `docker compose`); set `ALLOWED_ORIGINS` there to your Vercel URL.
+See [CONTRIBUTING.md](CONTRIBUTING.md). Issues and pull requests are welcome.
 
-## Security notes and limits
+## Author
 
-- JWT + RBAC/ABAC, PII masking, injection screening, read-only SQL guard, Redis rate limiting, non-root containers with dropped capabilities, Postgres RLS, append-only hash-chained audit.
-- Not production-ready as shipped: demo login, in-memory audit chain / pending approvals / semantic cache (persist them to Postgres/Redis), untrained CNN (flagged `model_trained:false`), `sessionStorage` token (use httpOnly cookies + OIDC for real deployments), LLM keys optional.
-- Never commit `.env`. Rotate any secret that was ever pushed.
-- Uploads: PNG/JPEG only, 10 MB. Prompts: 4,000 characters.
+**Nikhil Chary Sriramoju**, final-year B.Tech CSE student at Vaagdevi College of Engineering, Warangal.
+[GitHub](https://github.com/Nikhil-creat) · [LinkedIn](https://in.linkedin.com/in/nikhil-chary-sriramoju-95041b38a)
+
+## License
+
+[MIT](LICENSE)
