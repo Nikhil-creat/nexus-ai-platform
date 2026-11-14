@@ -11,7 +11,7 @@
   "dependencies": {
     "@refinedev/core": "^4.57.0",
     "@refinedev/nextjs-router": "^6.2.0",
-    "@refinedev/simple-rest": "^5.0.10",
+    "@refinedev/simple-rest": "^6.0.1",
     "@tanstack/react-query": "^4.36.1",
     "next": "^15.1.0",
     "react": "^19.0.0",
