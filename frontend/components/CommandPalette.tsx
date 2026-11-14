@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "@/lib/session";
 
 type Cmd = { label: string; hint: string; run: () => void };
 
@@ -8,6 +9,7 @@ export default function CommandPalette({ openCopilot }: { openCopilot: () => voi
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
   const router = useRouter();
+  const user = useSession((st) => st.user);
 
   const cmds: Cmd[] = useMemo(
     () => [
@@ -20,11 +22,16 @@ export default function CommandPalette({ openCopilot }: { openCopilot: () => voi
       { label: "Workflows", hint: "/admin/workflows", run: () => router.push("/admin/workflows") },
       { label: "Settings & theme", hint: "/admin/settings", run: () => router.push("/admin/settings") },
       { label: "Ask Nexus Copilot", hint: "AI", run: openCopilot },
-      { label: "Go to Platform", hint: "#platform", run: () => (location.hash = "platform") },
-      { label: "Go to Security", hint: "#security", run: () => (location.hash = "security") },
-      { label: "Go to Contact", hint: "#contact", run: () => (location.hash = "contact") },
+      user
+        ? { label: "Sign out", hint: "session", run: () => { useSession.getState().logout().then(() => router.push("/")); } }
+        : { label: "Sign in", hint: "/login", run: () => router.push("/login") },
+      { label: "Go to Home", hint: "/", run: () => router.push("/") },
+      { label: "Go to Platform", hint: "#platform", run: () => router.push("/#platform") },
+      { label: "Go to Credentials", hint: "#credentials", run: () => router.push("/#credentials") },
+      { label: "Go to Security", hint: "#security", run: () => router.push("/#security") },
+      { label: "Go to Contact", hint: "#contact", run: () => router.push("/#contact") },
     ],
-    [router, openCopilot]
+    [router, openCopilot, user]
   );
 
   useEffect(() => {

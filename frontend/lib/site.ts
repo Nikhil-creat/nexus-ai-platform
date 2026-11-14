@@ -26,6 +26,7 @@ export const NAV = [
   { label: "Platform", href: "#platform" },
   { label: "Security", href: "#security" },
   { label: "Builder", href: "#builder" },
+  { label: "Credentials", href: "#credentials" },
   { label: "Contact", href: "#contact" },
 ];
 
@@ -64,3 +65,16 @@ export const PROJECTS = [
   ["ChurnScope", "End-to-end churn prediction pipeline with evaluation and reporting."],
   ["Carrom AI Platform", "Multiplayer physics game with agentic AI, RAG, CNN and RL."],
 ];
+
+export const CREDENTIALS = {
+  education: [
+    { title: "B.Tech, Computer Science & Engineering", org: "Vaagdevi College of Engineering", period: "2023 – 2027" },
+  ],
+  experience: [
+    { title: "Machine Learning Engineer Intern", org: "Yuva Intern (NSDC)", note: "6-week program with weekly submitted tasks, starting with an ML pipeline project plan" },
+    { title: "Virtual experience programs", org: "Forage", note: "Job simulations across consulting, cybersecurity, data and software engineering" },
+  ],
+  certificateCount: "100+",
+  certificateAreas: ["Cloud & cybersecurity", "Data, AI & emerging tech", "Automation & robotics", "Software & systems engineering", "Consulting & business simulations"],
+  certificateIssuers: ["Skill India / NASSCOM", "IBM SkillsBuild", "UiPath", "Reliance Foundation", "Forage", "Deloitte", "TATA", "BCG Platinion", "Skyscanner", "Vista", "AIG", "EAB", "LifeArc", "British Airways", "Morrison Foerster", "Ashurst Perkins Coie"],
+};

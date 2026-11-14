@@ -6,6 +6,7 @@ import { MEDIA, NAV } from "@/lib/site";
 export default function Hero({ onOpenCopilot }: { onOpenCopilot?: () => void }) {
   const [open, setOpen] = useState(false);
   const [status, setStatus] = useState("");
+  const [email, setEmail] = useState("");
   const toggleRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -26,7 +27,7 @@ export default function Hero({ onOpenCopilot }: { onOpenCopilot?: () => void }) 
     return () => { window.removeEventListener("keydown", onKey); window.removeEventListener("resize", onResize); };
   }, [open]);
 
-  const join = () => { setOpen(false); document.getElementById("email")?.focus(); };
+  const join = () => { setOpen(false); router.push(`/login?mode=register${email ? `&email=${encodeURIComponent(email)}` : ""}`); };
 
   return (
     <header className="hero" style={{ "--poster": `url(${MEDIA.poster})` } as CSSProperties}>
@@ -72,7 +73,7 @@ export default function Hero({ onOpenCopilot }: { onOpenCopilot?: () => void }) 
             {n.label}
           </a>
         ))}
-        <button className="menu__cta menu__item" style={{ "--i": 4 } as CSSProperties} onClick={join}>Join up</button>
+        <button className="menu__cta menu__item" style={{ "--i": NAV.length } as CSSProperties} onClick={join}>Join up</button>
       </div>
 
       <div className="hero__body" id="top">
@@ -88,25 +89,27 @@ export default function Hero({ onOpenCopilot }: { onOpenCopilot?: () => void }) 
             noValidate
             onSubmit={(e) => {
               e.preventDefault();
-              setStatus("Demo mode — no email is sent. Press Access to explore.");
+              const v = email.trim();
+              if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v)) return setStatus("Enter a valid email first.");
+              router.push(`/login?mode=register&email=${encodeURIComponent(v)}`);
             }}
           >
             <label className="sr-only" htmlFor="email">Email</label>
-            <input id="email" className="input" type="email" name="email" placeholder="Email" autoComplete="email" />
-            <button type="submit" className="btn btn--ghost">Proceed using email</button>
+            <input id="email" className="input" type="email" name="email" placeholder="Email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <button type="submit" className="btn btn--ghost">Create account with email</button>
             <button type="button" className="btn btn--solid" onClick={() => router.push("/login")}>Access</button>
             <div className="form__status" role="status">{status}</div>
           </form>
 
           <a className="referral" href="#invite" onClick={(e) => { e.preventDefault(); onOpenCopilot?.(); }}>
-            I&apos;ve got an invite key
+            Ask the Copilot about NEXUS
           </a>
         </div>
       </div>
 
       <div className="legal">
         Opening a NEXUS account signals that you accept our{" "}
-        <a href="#privacy-notice">Privacy Notice</a> and <a href="#service-contract">Service Contract</a>.
+        <a href="/privacy">Privacy Notice</a> and <a href="/terms">Service Contract</a>.
       </div>
     </header>
   );

@@ -1,35 +1,14 @@
-import type { AccessControlProvider, AuthProvider } from "@refinedev/core";
-import { create } from "zustand";
+import type { AccessControlProvider } from "@refinedev/core";
+import { can, type Action } from "./resources";
+import { useSession } from "./session";
 
-export type Role = "admin" | "editor" | "viewer";
-
-export const useRole = create<{ role: Role; setRole: (r: Role) => void }>((set) => ({
-  role: "admin",
-  setRole: (role) => set({ role }),
-}));
-
-const MATRIX: Record<Role, string[]> = {
-  admin: ["list", "show", "create", "edit", "delete"],
-  editor: ["list", "show", "create", "edit"],
-  viewer: ["list", "show"],
-};
-
-/** Mirrors backend/app/security.py RBAC. The server remains the source of truth. */
+/** Mirrors the server's role matrix (lib/resources.ts). The server still enforces every rule; this only hides what you can't do. */
 export const accessControlProvider: AccessControlProvider = {
   can: async ({ resource, action }) => {
-    const role = useRole.getState().role;
-    // Audit trail is read-only for everyone; FinOps hidden from viewers.
-    if (resource === "audit" && action !== "list") return { can: false, reason: "Audit trail is append-only" };
-    if (resource === "finops" && role === "viewer") return { can: false, reason: "Viewers cannot see FinOps" };
-    const ok = MATRIX[role].includes(action);
-    return { can: ok, reason: ok ? undefined : `${role} may not ${action}` };
+    if (!resource) return { can: true };
+    const role = useSession.getState().user?.role;
+    const mapped: Action = action === "list" || action === "show" ? "list" : action === "create" ? "create" : action === "delete" ? "delete" : "edit";
+    const ok = can(role, resource, mapped);
+    return { can: ok, reason: ok ? undefined : `Your role (${role ?? "signed out"}) cannot ${mapped} ${resource}` };
   },
-};
-
-export const authProvider: AuthProvider = {
-  login: async () => ({ success: true, redirectTo: "/admin" }),
-  logout: async () => ({ success: true, redirectTo: "/" }),
-  check: async () => ({ authenticated: true }),
-  onError: async (error) => ({ error }),
-  getPermissions: async () => useRole.getState().role,
 };

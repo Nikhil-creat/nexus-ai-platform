@@ -6,11 +6,13 @@ export default function Footer() {
       <div>© {new Date().getFullYear()} NEXUS · Built by {OWNER.name}</div>
       <div className="footer__cols">
         {NAV.map((n) => <a key={n.href} href={n.href}>{n.label}</a>)}
-        <a href="/admin">Admin demo</a>
+        <a href="/admin">Dashboard</a>
+        <a href="/privacy">Privacy</a>
+        <a href="/terms">Terms</a>
         <a href={OWNER.github} target="_blank" rel="noopener noreferrer">GitHub</a>
         <a href={OWNER.linkedin} target="_blank" rel="noopener noreferrer">LinkedIn</a>
       </div>
-      <div id="privacy-notice">Press ⌘K / Ctrl+K for commands</div>
+      <div>Press ⌘K / Ctrl+K for commands</div>
     </footer>
   );
 }

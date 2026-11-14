@@ -25,21 +25,20 @@ Feed it an API spec, a JSON sample or a CSV. Get a typed, secure admin panel wit
 
 Every internal tool starts the same way: someone hand-builds tables, forms, permissions and audit logs on top of an API. NEXUS automates that. It infers schemas and relations, scaffolds a Refine admin, and layers on the parts teams usually bolt on later: role-based access, human approval for risky actions, hybrid retrieval over your own documents, document vision, cost tracking and a tamper-evident audit trail.
 
-## Live demo
+## Live site (real accounts, real backend)
 
-Deploy the `frontend/` folder to Vercel (see [Deploy](#deploy-frontend-on-vercel)) and open it. No backend is needed for the demo.
+The `frontend/` app is a complete product on its own: Next.js route handlers are the backend, so one Vercel project gives you the site, the API, authentication, a database and the AI Copilot. Nothing is mocked.
 
 | Step | Where | What to try |
 |---|---|---|
-| 1 | Landing page | The hero video, responsive menu, `Cmd/Ctrl+K` palette |
-| 2 | `/login` | Any valid email, password `nexus-demo` |
-| 3 | Overview | KPIs read through a Refine data provider |
-| 4 | Users / Orders | Sort, filter, CSV export, delete. Switch role in the sidebar and watch actions lock |
-| 5 | Schema Studio | Click **Load sample**, then **Analyze** |
-| 6 | Knowledge | Ask "who can delete records?" or "refund over 10000" |
-| 7 | Audit trail | Append entries, then press **Tamper (test)** and watch the chain break |
-| 8 | Workflows | Run the default rules against live orders |
-| 9 | Copilot (bottom right) | Type "delete all inactive users" and see the approval gate |
+| 1 | `/login` | Create an account. The email set in `ADMIN_EMAIL` becomes admin (if unset, the first account does) |
+| 2 | Admin → Settings | Check system status, press **Test AI providers**, then **Load sample data** |
+| 3 | Orders / Users | Create, edit, delete, sort, search, paginate, export CSV. Roles are enforced on the server |
+| 4 | Knowledge | Add a document, then search it (BM25 + vectors fused with RRF) |
+| 5 | Workflows | Add a rule such as `total > 1000 → flag for review` and press **Run now** |
+| 6 | Audit trail | Every change appears with before/after state; the SHA-256 chain is re-verified on load |
+| 7 | Copilot (bottom right) | Ask "which orders are pending?". Ask it to change something and approve or reject the proposal |
+| 8 | Landing page | Contact form (stored server-side), credentials section, `/privacy`, `/terms` |
 
 ## Features
 
@@ -57,78 +56,29 @@ Deploy the `frontend/` folder to Vercel (see [Deploy](#deploy-frontend-on-vercel
 | **Dashboard** | KPI tiles and bar charts (orders by status, users by role, token usage, order value), plus live tab presence. |
 | **Platform polish** | Command palette, theme studio, installable PWA with offline cache, social preview image, security headers, `robots.txt`, sitemap, 404 page, CSV and JSON export. |
 
-### Demo mode versus full stack
+### Two tiers
 
-| Capability | Vercel demo (no backend) | Docker full stack |
+| Capability | Vercel tier (`frontend/`, no Docker) | Docker enterprise tier |
 |---|---|---|
-| Admin tables, RBAC, CSV export | In-memory sample data | Your REST API through `NEXT_PUBLIC_REST_URL` |
-| Schema Studio | JSON and CSV and OpenAPI JSON in the browser | Also YAML through `/schema/inspect` |
-| Knowledge search | In-browser BM25 plus vectors | pgvector plus cross-encoder reranker |
-| Audit trail | Hash chain in browser storage | Postgres `audit_log` with immutability triggers |
-| Copilot | Local replies and approval gate | Streaming LLM through LiteLLM |
-| Document intelligence | Not available | CNN service |
-
-## Architecture
-
-```mermaid
-flowchart LR
-  U[Browser<br/>Next.js + Refine] -->|HTTPS| N[nginx<br/>rate limit + headers]
-  N --> F[Frontend :3000]
-  N -->|/api| B[FastAPI :8000]
-  B --> P[(PostgreSQL 16<br/>pgvector + RLS)]
-  B --> R[(Redis<br/>cache + limits)]
-  B --> M[(MinIO<br/>files)]
-  B --> C[CNN service<br/>PyTorch + OpenCV]
-  B --> Q[Celery worker]
-  Q --> G[LangGraph supervisor]
-  G --> S[Docker sandbox<br/>tsc, no network]
-  G -->|destructive step| H{Human approval}
-  B --> L[LiteLLM gateway<br/>OpenAI / Anthropic / Ollama]
-```
-
-```mermaid
-flowchart LR
-  A[Request] --> SUP[Supervisor]
-  SUP -->|build| ARC[Architect] --> COD[Codegen] --> QA[Sandbox tsc]
-  QA -->|errors, under 3 tries| COD
-  QA -->|clean| GATE{Destructive?}
-  GATE -->|yes| HUM[Human approves or rejects]
-  GATE -->|no| EXE[Executor]
-  HUM -->|approved| EXE
-  HUM -->|rejected| END[Stop]
-```
-
-### Repository layout
-
-```
-frontend/      Next.js 15, React 19, Refine, all pages and components
-backend/       FastAPI app, security, audit, RAG, worker, tests
-ai_workers/    LangGraph supervisor graph
-cnn_service/   PyTorch document classifier and anomaly detector
-infra/         nginx.conf and init.sql (extensions, RLS, immutable audit)
-.github/       CI workflow, issue and PR templates, Dependabot
-```
-
-## Tech stack
-
-| Layer | Tools |
-|---|---|
-| Frontend | Next.js 15 (App Router), React 19, Refine, TanStack Query, Zustand, Zod, TypeScript |
-| Backend | Python 3.12, FastAPI, Celery, SQLAlchemy, PyJWT |
-| AI | LangGraph, LiteLLM, sentence-transformers, cross-encoder reranking |
-| Vision | PyTorch, OpenCV, Tesseract |
-| Data | PostgreSQL 16 with pgvector and pg_trgm, Redis, MinIO |
-| Infra | Docker, Docker Compose, nginx, GitHub Actions |
+| Auth | Email + password (scrypt), signed HttpOnly cookie, rate limits, CSRF origin check | JWT, role matrix, tenant rules |
+| Data | Orders, users, messages, usage in Upstash Redis (memory fallback) | PostgreSQL 16 + pgvector |
+| Copilot | Groq or Gemini with tool calls, PII masking, approval gate | LiteLLM, LangGraph supervisor |
+| Knowledge | BM25 + hashed vectors, RRF | pgvector + cross-encoder reranker |
+| Audit trail | Hash chain in the store | Postgres `audit_log` with immutability triggers |
+| Document vision (CNN) | Not included | CNN service |
 
 ## Quick start
 
-### Frontend only
+### Frontend (site + API)
 
 ```bash
 cd frontend
+cp .env.example .env.local   # then edit: SESSION_SECRET, ADMIN_EMAIL, GROQ_API_KEY or GEMINI_API_KEY
 npm install
-npm run dev        # http://localhost:3000
+npm run dev                  # http://localhost:3000
 ```
+
+Without Upstash variables the data lives in server memory and resets on restart. The Settings page tells you which of these are missing.
 
 ### Full stack with Docker
 
@@ -163,31 +113,49 @@ cd backend && python -m pytest -q tests
 
 ## Configuration
 
-| Variable | Where | Purpose |
+**Frontend / Vercel (the site and its API)**
+
+| Variable | Required | Purpose |
 |---|---|---|
-| `POSTGRES_PASSWORD` | `.env` | Database password |
-| `JWT_SECRET` | `.env` | Token signing key, at least 16 characters |
-| `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | `.env` | Object storage credentials |
-| `DEMO_ADMIN_PASSWORD` | `.env` | Password for the demo login endpoint |
-| `LITELLM_MODEL` | `.env` | Default model, for example `gpt-4o-mini` |
-| `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | `.env` | Optional. Leave blank for offline demo replies |
-| `ALLOWED_ORIGINS` | `.env` | CORS origins, set to your frontend URL |
-| `NEXT_PUBLIC_API_URL` | frontend | Deployed FastAPI base URL. Empty means demo mode |
-| `NEXT_PUBLIC_REST_URL` | frontend | Point Refine at a real REST API |
-| `NEXT_PUBLIC_SITE_URL` | frontend | Public URL, used by the sitemap |
+| `SESSION_SECRET` | yes | Signs session cookies. Generate with `openssl rand -hex 32` |
+| `ADMIN_EMAIL` | recommended | This email becomes admin when it registers |
+| `ALLOW_SIGNUP` | no | Set `false` after creating your account to close public sign-up |
+| `GROQ_API_KEY` / `GEMINI_API_KEY` | one of them | Server-side keys for the Copilot. Never prefix with `NEXT_PUBLIC_` |
+| `GROQ_MODEL`, `GEMINI_MODEL`, `LLM_PROVIDER` | no | Override models or force a provider |
+| `LLM_BASE_URL`, `LLM_API_KEY`, `LLM_MODEL` | no | Any OpenAI-compatible endpoint |
+| `UPSTASH_REDIS_REST_URL` / `_TOKEN` (or `KV_REST_API_URL` / `_TOKEN`) | for persistence | Added automatically when you attach Upstash Redis in Vercel → Storage |
+| `NEXT_PUBLIC_SITE_URL` | no | Public URL for the sitemap |
+
+**Docker tier (`.env`)**
+
+| Variable | Purpose |
+|---|---|
+| `POSTGRES_PASSWORD`, `JWT_SECRET`, `MINIO_ROOT_USER`, `MINIO_ROOT_PASSWORD` | Secrets. Change all of them |
+| `DEMO_ADMIN_PASSWORD` | Password for the demo login endpoint |
+| `LITELLM_MODEL`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` | Optional LLM settings |
+| `ALLOWED_ORIGINS` | CORS origins |
 
 ## API reference
 
-| Method | Path | Role | Purpose |
+Frontend routes (all under `/api`, JSON, same-origin):
+
+| Method | Path | Access | Purpose |
 |---|---|---|---|
-| GET | `/health` | public | Liveness and Redis status |
-| POST | `/auth/login` | public | Issue a JWT |
-| POST | `/schema/inspect` | admin, editor | Infer resources from a spec or sample |
-| POST | `/copilot/stream` | any | Streaming copilot over SSE |
-| POST | `/copilot/approve/{id}` | admin | Approve or reject a pending action |
-| POST | `/documents/extract` | admin, editor | Classify a document image and extract fields |
-| GET | `/finops/summary` | any | Token and cost telemetry |
-| GET | `/audit` | any | Recent entries plus chain verification |
+| GET | `/health` | public | Storage, secret and provider status |
+| GET | `/health/ai` | admin | Live test call to each LLM provider |
+| POST | `/auth/register`, `/auth/login`, `/auth/logout` | public | Session management |
+| GET | `/auth/me` | public | Current user or `null` |
+| GET, POST | `/data/{resource}` | by role | List (search, sort, paginate) and create |
+| GET, PATCH, DELETE | `/data/{resource}/{id}` | by role | Read, update, delete |
+| GET, POST, DELETE | `/knowledge`, `/knowledge/{id}` | signed in; write admin/editor | Documents and hybrid search (`?q=`) |
+| GET, POST, DELETE | `/rules`, `/rules/{id}`; POST `/rules/run` | admin/editor to change | Workflow rules |
+| GET | `/audit` | signed in | Entries plus chain verification |
+| POST | `/seed` | admin | Load sample data |
+| POST | `/copilot` | public (guest) / signed in | SSE stream: `meta, guard, tool, approval, token, error, done` |
+| POST | `/approvals/{id}` | signed in | Approve or reject a proposed action (single use, RBAC re-checked) |
+| POST | `/contact` | public | Contact form (honeypot + rate limit) |
+
+Docker tier: `/health`, `/auth/login`, `/schema/inspect`, `/copilot/stream`, `/copilot/approve/{id}`, `/documents/extract`, `/finops/summary`, `/audit` (see `/api/docs`).
 
 ## Security model
 
@@ -203,13 +171,14 @@ Report vulnerabilities as described in [SECURITY.md](SECURITY.md).
 
 ## Known limitations
 
-Be honest about what this is: a strong portfolio-grade foundation, not a finished SaaS.
+Be honest about what this is: a strong portfolio-grade product, not a finished SaaS.
 
-- The demo login and sample data are for evaluation only. Connect a real identity provider (OIDC) and store tokens in httpOnly cookies before real use.
-- The backend audit chain, pending approvals and semantic cache are in memory. Persist them to Postgres and Redis for production.
-- The CNN ships without trained weights. Responses are flagged `model_trained: false` and routed to human review.
-- LLM features need an API key or a local Ollama model. Without one the copilot answers in offline demo mode.
-- Uploads are limited to PNG and JPEG up to 10 MB. Prompts are limited to 4,000 characters.
+- Email + password only. No email verification, password reset, MFA or SSO yet (OIDC and passkeys are on the roadmap).
+- Without Upstash Redis the store is in memory and resets on cold starts. The Settings page flags this.
+- Redis is not a relational database: there are no transactions across records, and listing loads and filters in the function.
+- The Copilot depends on third-party LLM free tiers, which can rate-limit or change model names. Use **Test AI providers** and the `*_MODEL` overrides.
+- The CNN service ships without trained weights (Docker tier only) and routes results to human review.
+- Do not store confidential or regulated data. See `/privacy` and `/terms`.
 
 ## Push to GitHub from your phone (Termux)
 
@@ -228,14 +197,15 @@ gh repo create nexus-ai-platform --public --source=. --remote=origin --push
 
 Later changes: `git add . && git commit -m "message" && git push`.
 
-## Deploy frontend on Vercel
+## Deploy on Vercel
 
-1. Open vercel.com, sign in with GitHub, then **Add New → Project** and import this repo.
-2. Set **Root Directory** to `frontend`.
-3. Leave environment variables empty for the demo, then press **Deploy**.
-4. Every push to `main` redeploys.
+1. vercel.com → **Add New → Project** → import this repo → **Root Directory** `frontend`, framework **Next.js**.
+2. Environment variables: `SESSION_SECRET`, `ADMIN_EMAIL`, `GROQ_API_KEY` and/or `GEMINI_API_KEY`.
+3. **Storage** tab → create **Upstash Redis** and connect it to the project (adds the REST variables for you).
+4. Redeploy, open `/login`, register with `ADMIN_EMAIL`, then set `ALLOW_SIGNUP=false` and redeploy.
+5. Admin → Settings should show every check green.
 
-Vercel hosts the frontend only. Run the Python services on Render, Railway, Fly.io or a VPS with `docker compose`, then set `NEXT_PUBLIC_API_URL` in Vercel and `ALLOWED_ORIGINS` on the backend.
+The Docker tier is optional and runs on any VPS with `docker compose`.
 
 ## Roadmap
 

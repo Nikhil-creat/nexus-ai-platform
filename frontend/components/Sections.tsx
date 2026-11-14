@@ -1,4 +1,5 @@
-import { CAPABILITIES, LIMITS, OWNER, PROJECTS, SECURITY } from "@/lib/site";
+import { CAPABILITIES, CREDENTIALS, LIMITS, OWNER, PROJECTS, SECURITY } from "@/lib/site";
+import ContactForm from "./ContactForm";
 
 const Cell = ({ n, t, d }: { n?: string; t: string; d: string }) => (
   <article className="cell">
@@ -52,9 +53,28 @@ export default function Sections() {
         </div>
       </section>
 
+      <section className="section" id="credentials">
+        <span className="section__eyebrow">[ Credentials ]</span>
+        <h2 className="section__title">The engineer behind NEXUS.</h2>
+        <div className="stats">
+          <div className="stat"><b>{CREDENTIALS.certificateCount}</b><span>Certifications &amp; programs</span></div>
+          <div className="stat"><b>{CREDENTIALS.certificateIssuers.length}</b><span>Issuers &amp; partners</span></div>
+          <div className="stat"><b>{CREDENTIALS.experience.length}</b><span>Internship &amp; simulation tracks</span></div>
+        </div>
+        <div className="grid">
+          {CREDENTIALS.education.map((e) => <Cell key={e.title} n={e.period} t={e.title} d={e.org} />)}
+          {CREDENTIALS.experience.map((e) => <Cell key={e.title} n={e.org} t={e.title} d={e.note} />)}
+        </div>
+        <p className="section__lead" style={{ marginTop: 28 }}>Certificate areas</p>
+        <div className="tags">{CREDENTIALS.certificateAreas.map((a) => <span className="tag" key={a}>{a}</span>)}</div>
+        <p className="section__lead" style={{ marginTop: 28 }}>Issued by</p>
+        <div className="tags">{CREDENTIALS.certificateIssuers.map((a) => <span className="tag" key={a}>{a}</span>)}</div>
+      </section>
+
       <section className="section" id="contact">
         <span className="section__eyebrow">[ Contact ]</span>
         <h2 className="section__title">Let&apos;s build something autonomous.</h2>
+        <ContactForm />
         <div className="contact-links">
           <a href={`mailto:${OWNER.email}`}>Email</a>
           <a href={OWNER.github} target="_blank" rel="noopener noreferrer">GitHub</a>
